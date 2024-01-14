@@ -11,15 +11,19 @@ dotenv.config();
 
 // Index setup
 const indexName = getEnv("PINECONE_INDEX");
-const pinecone = new Pinecone();
+const apiKey = getEnv("PINECONE_API_KEY");
+const environment = getEnv("PINECONE_ENVIRONMENT");
 
+const pinecone = new Pinecone({
+  apiKey, 
+  environment,
+});
 
 function* chunkArray<T>(array: T[], chunkSize: number): Generator<T[]> {
   for (let i = 0; i < array.length; i += chunkSize) {
     yield array.slice(i, i + chunkSize);
   }
 }
-
 
 async function embedAndUpsert({ imagePaths, chunkSize }: { imagePaths: string[], chunkSize: number }) {
   // Chunk the image paths into batches of size chunkSize
@@ -40,9 +44,16 @@ const indexImages = async () => {
   try {
     // Create the index if it doesn't already exist
     const indexList = await pinecone.listIndexes();
-    if (indexList.indexOf({ name: indexName }) === -1) {
-      await pinecone.createIndex({ name: indexName, dimension: 512, waitUntilReady: true })
+    for (const index of indexList) {
+      if (index.name === indexName) {
+        console.log(`Index ${indexName} already exists`);
+       // return;
+      }
     }
+    //
+    // if (indexList.indexOf({ name: indexName }) === -1) {
+    //  await pinecone.createIndex({ name: indexName, dimension: 512, waitUntilReady: true });
+    // }
 
     await embedder.init("Xenova/clip-vit-base-patch32");
     const imagePaths = await listFiles("./data");
